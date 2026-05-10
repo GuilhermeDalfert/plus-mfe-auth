@@ -11,6 +11,7 @@ export default defineConfig({
       // Componentes expostos para o Shell consumir
       exposes: {
         "./LoginPage": "./src/pages/LoginPage",
+        "./RegisterPage": "./src/pages/RegisterPage",
       },
       shared: ["react", "react-dom"],
     }),
