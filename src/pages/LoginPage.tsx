@@ -1,16 +1,13 @@
 import { useState, type FormEvent } from "react";
-import {
-  Alert,
-  Box,
-  Button,
-  CircularProgress,
-  Container,
-  Paper,
-  Stack,
-  TextField,
-  Typography,
-} from "@mui/material";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
+import OutlinedInput from "@mui/material/OutlinedInput";
+import Alert from "@mui/material/Alert";
 import { login } from "../api/auth";
+import AppHeader from "../components/AppHeader";
+import AuthCard from "../components/AuthCard";
 
 type LoginPageProps = {
   onLogin?: (token: string) => void;
@@ -39,57 +36,47 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   };
 
   return (
-    <Container maxWidth="xs" sx={{ mt: 8 }}>
-      <Paper elevation={3} sx={{ p: 4 }}>
-        <Stack spacing={3}>
-          <Box>
-            <Typography variant="h5" component="h1" sx={{ fontWeight: 600 }}>
-              Plus
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Entrar na sua conta
-            </Typography>
-          </Box>
+    <Box>
+      <AppHeader />
+      <AuthCard title="ENTRAR">
+        <Box
+          component="form"
+          onSubmit={handleSubmit}
+          sx={{ width: "100%", display: "flex", flexDirection: "column", gap: "15px", alignItems: "center" }}
+        >
+          <FormControl variant="outlined">
+            <InputLabel shrink htmlFor="login-username">Usuário</InputLabel>
+            <OutlinedInput
+              id="login-username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              label={null}
+              notched={false}
+            />
+          </FormControl>
 
-          <Box component="form" onSubmit={handleSubmit} noValidate>
-            <Stack spacing={2}>
-              <TextField
-                label="Usuário ou e-mail"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-                fullWidth
-                autoFocus
-                autoComplete="username"
-                disabled={loading}
-              />
-              <TextField
-                label="Senha"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                fullWidth
-                autoComplete="current-password"
-                disabled={loading}
-              />
+          <FormControl variant="outlined">
+            <InputLabel shrink htmlFor="login-password">Senha</InputLabel>
+            <OutlinedInput
+              id="login-password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              label={null}
+              notched={false}
+            />
+          </FormControl>
 
-              {error && <Alert severity="error">{error}</Alert>}
+          {error && <Alert severity="error" sx={{ width: "100%" }}>{error}</Alert>}
 
-              <Button
-                type="submit"
-                variant="contained"
-                size="large"
-                fullWidth
-                disabled={loading}
-                startIcon={loading ? <CircularProgress size={18} color="inherit" /> : null}
-              >
-                {loading ? "Entrando..." : "Entrar"}
-              </Button>
-            </Stack>
-          </Box>
-        </Stack>
-      </Paper>
-    </Container>
+          <Button type="submit" disabled={loading} sx={{ mt: "15px" }}>
+            {loading ? "Entrando..." : "Entrar"}
+          </Button>
+        </Box>
+      </AuthCard>
+    </Box>
   );
 }

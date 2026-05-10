@@ -1,42 +1,36 @@
 import React, { useState } from "react";
 import ReactDOM from "react-dom/client";
-import {
-  AppBar,
-  Box,
-  Button,
-  CssBaseline,
-  ThemeProvider,
-  Toolbar,
-  createTheme,
-} from "@mui/material";
+import { ThemeProvider } from "@mui/material/styles";
+import CssBaseline from "@mui/material/CssBaseline";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
-
-const theme = createTheme({
-  palette: { mode: "light" },
-});
+import { theme } from "./theme";
 
 function DevHarness() {
   const [view, setView] = useState<"login" | "register">("login");
 
   return (
     <Box>
-      <AppBar position="static" color="default" elevation={1}>
-        <Toolbar sx={{ gap: 1 }}>
-          <Button
-            variant={view === "login" ? "contained" : "text"}
-            onClick={() => setView("login")}
-          >
-            Login
-          </Button>
-          <Button
-            variant={view === "register" ? "contained" : "text"}
-            onClick={() => setView("register")}
-          >
-            Register
-          </Button>
-        </Toolbar>
-      </AppBar>
+      <Box sx={{ p: 1.5, borderBottom: "1px solid #ccc", display: "flex", gap: 1 }}>
+        <Button
+          size="small"
+          variant={view === "login" ? "contained" : "outlined"}
+          onClick={() => setView("login")}
+          sx={{ minWidth: 0, height: 32, fontSize: 14 }}
+        >
+          Login
+        </Button>
+        <Button
+          size="small"
+          variant={view === "register" ? "contained" : "outlined"}
+          onClick={() => setView("register")}
+          sx={{ minWidth: 0, height: 32, fontSize: 14 }}
+        >
+          Register
+        </Button>
+      </Box>
       {view === "login" ? (
         <LoginPage onLogin={(token) => console.log("Logado:", token)} />
       ) : (
