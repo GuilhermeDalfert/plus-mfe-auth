@@ -5,16 +5,19 @@ import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import OutlinedInput from "@mui/material/OutlinedInput";
 import Alert from "@mui/material/Alert";
+import { ThemeProvider } from "@mui/material/styles";
+import CssBaseline from "@mui/material/CssBaseline";
 import { login } from "../api/auth";
 import AppHeader from "../components/AppHeader";
 import AuthCard from "../components/AuthCard";
+import { theme } from "../theme";
 
 type LoginPageProps = {
   onLogin?: (token: string) => void;
 };
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -25,9 +28,10 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     setError(null);
 
     try {
-      const { token } = await login({ username, password });
-      localStorage.setItem("token", token);
-      onLogin?.(token);
+      const { accessToken, refreshToken } = await login({ email, password });
+      localStorage.setItem("token", accessToken);
+      localStorage.setItem("refreshToken", refreshToken);
+      onLogin?.(accessToken);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao fazer login");
     } finally {
@@ -36,6 +40,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   };
 
   return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
     <Box>
       <AppHeader />
       <AuthCard title="ENTRAR">
@@ -45,12 +51,12 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           sx={{ width: "100%", display: "flex", flexDirection: "column", gap: "15px", alignItems: "center" }}
         >
           <FormControl variant="outlined">
-            <InputLabel shrink htmlFor="login-username">Usuário</InputLabel>
+            <InputLabel shrink htmlFor="login-email">E-mail</InputLabel>
             <OutlinedInput
-              id="login-username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              id="login-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
               label={null}
               notched={false}
@@ -78,5 +84,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         </Box>
       </AuthCard>
     </Box>
+    </ThemeProvider>
   );
 }

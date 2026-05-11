@@ -7,9 +7,12 @@ import OutlinedInput from "@mui/material/OutlinedInput";
 import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
 import Alert from "@mui/material/Alert";
+import { ThemeProvider } from "@mui/material/styles";
+import CssBaseline from "@mui/material/CssBaseline";
 import { register, USER_ROLES, type UserRole } from "../api/auth";
 import AppHeader from "../components/AppHeader";
 import AuthCard from "../components/AuthCard";
+import { theme } from "../theme";
 
 type RegisterPageProps = {
   onRegister?: () => void;
@@ -39,6 +42,8 @@ export default function RegisterPage({ onRegister }: RegisterPageProps) {
   };
 
   return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
     <Box>
       <AppHeader />
       <AuthCard title="CADASTRAR">
@@ -107,5 +112,6 @@ export default function RegisterPage({ onRegister }: RegisterPageProps) {
         </Box>
       </AuthCard>
     </Box>
+    </ThemeProvider>
   );
 }

@@ -6,12 +6,20 @@ export const USER_ROLES = ["VENDEDOR", "GERENTE", "ADMIN"] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
 export type LoginRequest = {
-  username: string;
+  email: string;
   password: string;
 };
 
 export type LoginResponse = {
-  token: string;
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+  user: {
+    id: string;
+    username: string;
+    email: string;
+    role: string;
+  };
 };
 
 export type RegisterRequest = {
