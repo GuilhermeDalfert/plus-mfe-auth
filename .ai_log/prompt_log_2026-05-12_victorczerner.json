@@ -1,0 +1,90 @@
+[
+  {
+    "timestamp": "2026-05-12T02:53:53.437Z",
+    "source": "claude",
+    "git_branch": "main",
+    "git_user_name": "VictorCzerner",
+    "call_context": {
+      "cwd": "c:\\pucrs\\es2\\t1\\plus-mfe-auth"
+    },
+    "role": "user",
+    "content": "Configure Vitest neste projeto (Vite + React 18 + TypeScript + Module Federation) e escreva testes unitários para os\n  componentes em src/pages/ e src/components/.\n\n  Contexto do projeto:\n  - Microfrontend de autenticação do sistema Plus (gestão de estoque de roupas)\n  - Stack: React 18, Vite 5, MUI 9, react-router-dom 7, TypeScript\n  - Estrutura relevante:\n    - src/pages/LoginPage.tsx\n    - src/pages/RegisterPage.tsx\n    - src/components/AuthCard.tsx\n    - src/components/AppHeader.tsx\n    - src/api/auth.ts (cliente HTTP — deve ser mockado nos testes)\n  - O LoginPage é exposto via Module Federation pra ser consumido pelo plus-shell\n  - Já existe CI no GitHub Actions em .github/workflows/ci.yml — ele precisa rodar os testes antes do build\n\n  Tarefas:\n  1. Instalar como devDependencies: vitest, @testing-library/react, @testing-library/jest-dom,\n  @testing-library/user-event, jsdom, @vitest/coverage-v8\n  2. Configurar Vitest:\n     - Adicionar bloco `test` no vite.config.js (environment: 'jsdom', globals: true, setupFiles)\n     - Criar src/test/setup.ts importando @testing-library/jest-dom\n     - Adicionar tipos do vitest no tsconfig.json\n  3. Adicionar scripts no package.json: \"test\": \"vitest run\", \"test:watch\": \"vitest\", \"test:coverage\": \"vitest run\n  --coverage\"\n  4. Escrever testes priorizando comportamento de usuário, não detalhes de implementação:\n     - LoginPage: renderização dos campos, validação de email inválido, submit chama api/auth.login com payload correto,\n   exibição de erro quando API falha (mockar src/api/auth.ts)\n     - RegisterPage: mesma lógica\n     - AuthCard: testar props/children\n  5. Atualizar .github/workflows/ci.yml adicionando step `npm test` ANTES do step de build, mantendo o resto do pipeline\n   igual\n  6. Rodar `npm test` no final pra confirmar que tudo passa\n\n  Antes de escrever os testes, leia os arquivos fonte para entender o comportamento real dos componentes — não invente\n  comportamento que não existe. Se um componente for trivial demais pra valer um teste, fale e pule. Use\n  @testing-library/user-event (não fireEvent) pra simular interações."
+  },
+  {
+    "timestamp": "2026-05-12T02:58:08.409Z",
+    "source": "claude",
+    "git_branch": "main",
+    "git_user_name": "VictorCzerner",
+    "call_context": {
+      "cwd": "c:\\pucrs\\es2\\t1\\plus-mfe-auth"
+    },
+    "role": "assistant",
+    "content": "All 10 tests pass."
+  },
+  {
+    "timestamp": "2026-05-12T02:58:17.216Z",
+    "source": "claude",
+    "git_branch": "main",
+    "git_user_name": "VictorCzerner",
+    "call_context": {
+      "cwd": "c:\\pucrs\\es2\\t1\\plus-mfe-auth"
+    },
+    "role": "assistant",
+    "content": "Pronto. Resumo:\n\n**Setup**\n- Instalei `vitest`, `@testing-library/{react,jest-dom,user-event}`, `jsdom`, `@vitest/coverage-v8` como devDependencies\n- `vite.config.js`: adicionei bloco `test` (jsdom, globals, setupFiles, css:true) + `/// <reference types=\"vitest\" />`\n- `src/test/setup.ts`: importa `@testing-library/jest-dom/vitest`\n- `tsconfig.json`: adicionei `\"vitest/globals\"` e `\"@testing-library/jest-dom\"` em `types`\n- `package.json`: scripts `test`, `test:watch`, `test:coverage`\n\n**Testes (10 passando)**\n- `src/components/AuthCard.test.tsx` — renderização de título e children\n- `src/pages/LoginPage.test.tsx` — campos, validação de email (api não é chamada com email inválido), submit com payload correto + persistência de tokens + `onLogin`, alerta de erro\n- `src/pages/RegisterPage.test.tsx` — campos, validação de email, submit com payload (incluindo role default `VENDEDOR`) + `onRegister`, alerta de erro\n- `api/auth` mockado com `vi.mock` em ambas as pages\n- Pulei `AppHeader` — é puramente estático (renderiza \"PLUS\"), não vale teste\n\n**CI**\n- `.github/workflows/ci.yml`: adicionei step `Test: npm test` entre `Type check` e `Build`\n\n**Nota**: em `RegisterPage` o campo \"Perfil\" (MUI Select) não é localizado por `getByLabelText` porque o MUI esconde o input nativo com `aria-hidden`; usei `getByRole(\"combobox\")`."
+  },
+  {
+    "timestamp": "2026-05-12T02:59:23.955Z",
+    "source": "claude",
+    "git_branch": "main",
+    "git_user_name": "VictorCzerner",
+    "call_context": {
+      "cwd": "c:\\pucrs\\es2\\t1\\plus-mfe-auth"
+    },
+    "role": "user",
+    "content": "não vale a pena deixar os arquivos de testes separados, para uma melhor organização?"
+  },
+  {
+    "timestamp": "2026-05-12T02:59:30.906Z",
+    "source": "claude",
+    "git_branch": "main",
+    "git_user_name": "VictorCzerner",
+    "call_context": {
+      "cwd": "c:\\pucrs\\es2\\t1\\plus-mfe-auth"
+    },
+    "role": "assistant",
+    "content": "Depende do estilo que você prefere — ambas as abordagens são comuns:\n\n- **Co-locado** (atual, `LoginPage.test.tsx` ao lado de `LoginPage.tsx`): facilita achar/manter o teste junto do código, refactors movem os dois juntos, imports ficam curtos (`./LoginPage`). É o padrão recomendado pelo Vitest/Testing Library.\n- **Separado** (ex: `src/__tests__/pages/LoginPage.test.tsx` ou `tests/`): deixa `src/` \"limpo\" de arquivos de teste, mas duplica a hierarquia de pastas e os imports ficam relativos longos (`../../pages/LoginPage`). Em projetos pequenos como esse MFE, geralmente é overhead sem ganho real.\n\nMinha recomendação é manter co-locado — o projeto tem só 4 arquivos testáveis e o ganho organizacional de uma pasta separada não compensa o atrito. Quer que eu mova mesmo assim?"
+  },
+  {
+    "timestamp": "2026-05-12T02:59:55.160Z",
+    "source": "claude",
+    "git_branch": "main",
+    "git_user_name": "VictorCzerner",
+    "call_context": {
+      "cwd": "c:\\pucrs\\es2\\t1\\plus-mfe-auth"
+    },
+    "role": "user",
+    "content": "prefiro separado mesmo"
+  },
+  {
+    "timestamp": "2026-05-12T03:00:31.467Z",
+    "source": "claude",
+    "git_branch": "main",
+    "git_user_name": "VictorCzerner",
+    "call_context": {
+      "cwd": "c:\\pucrs\\es2\\t1\\plus-mfe-auth"
+    },
+    "role": "assistant",
+    "content": "Agora movo o setup também e removo os arquivos antigos."
+  },
+  {
+    "timestamp": "2026-05-12T03:00:57.451Z",
+    "source": "claude",
+    "git_branch": "main",
+    "git_user_name": "VictorCzerner",
+    "call_context": {
+      "cwd": "c:\\pucrs\\es2\\t1\\plus-mfe-auth"
+    },
+    "role": "assistant",
+    "content": "Pronto. Estrutura agora:\n\n```\ntests/\n  setup.ts\n  components/AuthCard.test.tsx\n  pages/LoginPage.test.tsx\n  pages/RegisterPage.test.tsx\n```\n\nAtualizei `vite.config.js` (`setupFiles`), `tsconfig.json` (`include`) e removi os arquivos antigos de `src/`. 10/10 testes passando."
+  }
+]
