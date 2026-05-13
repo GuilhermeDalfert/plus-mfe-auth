@@ -20,7 +20,7 @@ Requisitos:
 - Segurança com JWT (Bearer token)
 - Tratamento centralizado de erros
 - Tipagem forte (TypeScript)
-- Resiliência a falhas de rede
+- Sinalização clara de falhas de rede (sem retry automático — ver Negativas)
 
 ---
 
@@ -126,11 +126,11 @@ export function deleteUser(id: string): Promise<void> {
 
 ### 3. **Tratamento de Erros**
 
-**Estratégia centralizada**:
-- Erros de rede → "Não foi possível contatar o servidor"
-- Erros 4xx → Mensagem do backend
-- Erros 5xx → "Erro interno do servidor"
-- Status 204 → Sucesso sem conteúdo
+**Estratégia centralizada** (implementação real em `http.ts`):
+- **Falha de rede** (`fetch` lança) → `ApiError("Não foi possível contatar o servidor", 0)` — status `0` é a convenção para "não chegou ao servidor".
+- **Resposta não-OK (qualquer 4xx ou 5xx)** → `ApiError(<body de texto> || \`Erro ${status}\`, status)`. O cliente **não** diferencia 4xx de 5xx — usa o body do backend se presente, caso contrário um genérico `Erro <status>`.
+- **Status 204** ou resposta sem `Content-Type: application/json` → resolve com `undefined` (tratado como `void` na API tipada).
+- **Resposta OK com JSON** → `res.json()` é retornado como `T`.
 
 **Exposição do erro**:
 ```typescript
@@ -222,16 +222,20 @@ VITE_MS_AUTH_URL=http://localhost:3001
 
 ## 🔐 Endpoints Esperados
 
-| Método | Endpoint | Descrição | Auth |
-|--------|----------|-----------|------|
-| POST | `/auth/login` | Login com email/senha | ❌ |
-| POST | `/auth/register` | Registro de novo usuário | ❌ |
-| GET | `/auth/me` | Dados do usuário atual | ✅ |
-| GET | `/users` | Listar todos usuários | ✅ |
-| PATCH | `/users/{id}` | Atualizar usuário | ✅ |
-| DELETE | `/users/{id}` | Deletar usuário | ✅ |
+| Método | Endpoint | Descrição | Auth | Implementado no cliente |
+|--------|----------|-----------|------|---|
+| POST | `/auth/login` | Login com email/senha | ❌ | ✅ `auth.login()` |
+| POST | `/auth/register` | Registro de novo usuário | ❌ | ✅ `auth.register()` |
+| GET | `/auth/me` | Dados do usuário atual | ✅ | ✅ `auth.me()` |
+| POST | `/auth/refresh` | Renovar access token via refresh token | ❌ | ❌ **pendente** |
+| POST | `/auth/logout` | Revogar refresh token no backend | ✅ | ❌ **pendente** (logout atual só limpa localStorage) |
+| GET | `/users` | Listar todos usuários | ✅ | ✅ `users.listUsers()` |
+| PATCH | `/users/{id}` | Atualizar usuário | ✅ | ✅ `users.updateUser()` |
+| DELETE | `/users/{id}` | Deletar usuário | ✅ | ✅ `users.deleteUser()` |
 
 **Base URL**: `${VITE_MS_AUTH_URL}` (ex: `http://localhost:3001`)
+
+> `auth/refresh` e `auth/logout` existem no backend (`plus-ms-auth`) e estão documentados no `CLAUDE.md` do projeto. O cliente HTTP do MFE ainda não os consome — refresh token automático é uma pendência conhecida (ver "Negativas" e "Alternativas Consideradas → Refresh Token Automático").
 
 ---
 

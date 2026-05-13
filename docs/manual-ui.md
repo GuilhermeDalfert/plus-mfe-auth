@@ -108,10 +108,10 @@ type RegisterPageProps = {
 **Endpoints**:
 - `POST /auth/register` → void (sem response body)
 
-**Validações** (A confirmar):
-- Email válido (client-side apenas?)
-- Senha com requisitos mínimos? (A confirmar)
-- Username único? (server-side)
+**Validações**:
+- Email válido — `type="email"` do HTML5 (validação client-side); o submit não dispara se o input rejeita o formato (coberto em `tests/pages/RegisterPage.test.tsx`).
+- Senha: sem requisitos mínimos no front. Eventual regra fica no backend.
+- Username único: validado server-side (retorna erro 4xx no `POST /auth/register`).
 
 ---
 
@@ -123,16 +123,14 @@ type RegisterPageProps = {
 - AppHeader com ícone de menu e dados do usuário logado
 - Sidebar lateral (minimizável)
 - Painel principal com:
-  - Botão "+ Adicionar Usuário"
+  - Botão "adicionar usuario" (**visível apenas para `role === "ADMIN"`** — ver [ADR-0004](./adr/0004-visibilidade-admin-only-no-mfe.md))
   - Campo de busca (filtra por username, email, role)
   - Tabela com colunas:
-    - Checkbox (seleção múltipla)
-    - ID
     - Usuário
-    - Email
-    - Perfil/Role
-    - Ações (ícone de editar)
-  - Botão "Deletar Selecionados" (vermelho, só ativa se itens selecionados)
+    - E-mail
+    - Cargo
+    - Ações (**só renderizada para admin**): ícone de editar + checkbox de seleção da linha
+  - Botão "Deletar Usuário(s)" (vermelho, **só para admin**, ativa quando há linhas selecionadas)
   - Estados de loading (spinner), erro (Alert), vazio
 
 **Props**:
@@ -148,7 +146,7 @@ type UsersPageProps = {
 3. Usuário pode:
    - **Buscar**: Digita no campo de busca, filtra em tempo real
    - **Selecionar**: Clica checkbox para seleção múltipla
-   - **Editar**: Clica ícone de editar, navega para `/users/{id}`
+   - **Editar**: Clica ícone de editar, navega para `/users/{id}/edit`
    - **Deletar selecionados**: Clica botão vermelho, confirma em modal, deleta via `DELETE /users/{id}`
    - **Adicionar**: Clica botão "+ Adicionar", dispara callback `onAddUser()` ou navega para `/register`
 
@@ -163,43 +161,49 @@ type UsersPageProps = {
 - `selected`: Set<string> com IDs dos usuários selecionados
 - `search`: String com query de busca
 
-**Lógica de Seleção**:
-- Usuário não pode deletar a si mesmo (checkbox desabilitado para usuário atual)
-- Confirmação via modal antes de deletar
+**Lógica de Seleção** (admin):
+- Admin não pode deletar a si mesmo (checkbox desabilitado com tooltip "Você não pode deletar a si mesmo")
+- Confirmação via [ConfirmDialog](#componente-confirmdialog) antes de deletar
+- Delete em lote via `Promise.allSettled` — sucessos são removidos da tabela; falhas são exibidas em `Alert`
 
 ---
 
-### 4. **Update User Page** (`/users/:id`)
+### 4. **Update User Page** (`/users/:id/edit`)
 
 **Arquivo**: [src/pages/UpdateUserPage.tsx](../src/pages/UpdateUserPage.tsx)
+
+**Acesso**:
+- **Restrita a admin**. Se `currentUser.role !== "ADMIN"`, o componente faz `navigate("/users", { replace: true })` no mount (`useEffect` em `UpdateUserPage.tsx:59-63`).
 
 **Componentes**:
 - AppHeader com ícone de menu e dados do usuário logado
 - Sidebar lateral (minimizável)
 - Painel principal com:
-  - Título: "Editar Usuário"
+  - Título: "Editar usuário"
   - Formulário com campos:
-    - Username (text input)
-    - Email (email input)
-    - Role (Select)
+    - Usuário (text input)
+    - E-mail (email input)
+    - Perfil (Select com `USER_ROLES`) — **desabilitado se admin estiver editando a si mesmo** (`isSelf`), com a nota "Você não pode alterar seu próprio cargo"
   - Botões:
-    - "Salvar" (azul)
-    - "Cancelar" (cinza)
-    - "Deletar Usuário" (vermelho)
+    - "Atualizar" (azul, submit)
+    - "Cancelar" (cinza, volta para `/users`)
+    - "Deletar Usuário" (vermelho) — **só aparece se `!isSelf`** (admin não pode deletar a si mesmo)
   - Estados: loading, erro no carregamento, erro na salvação
 
 **Fluxo**:
-1. URL contém ID do usuário (`/users/:id`)
+1. URL contém ID do usuário (`/users/:id/edit`)
 2. Página carrega lista de usuários e encontra o usuário com ID especificado
 3. Formulário é preenchido com dados do usuário
-4. Usuário pode:
-   - **Editar**: Altera campos, clica "Salvar"
+4. Admin pode:
+   - **Atualizar**: Altera campos, clica "Atualizar". O payload depende de `isSelf`:
+     - Admin editando outro: `PATCH /users/{id}` com `{ username, email, role }`
+     - Admin editando a si mesmo: `PATCH /users/{id}` com `{ username, email }` (role omitido)
    - **Cancelar**: Volta para `/users`
-   - **Deletar**: Clica botão vermelho, confirma em modal, deleta via `DELETE /users/{id}`
+   - **Deletar**: Clica botão vermelho, confirma em `ConfirmDialog`, deleta via `DELETE /users/{id}`
 
 **Endpoints**:
-- `GET /users` → `User[]` (lista completa, depois filtra pelo ID)
-- `PATCH /users/{id}` → `User` (atualiza usuário)
+- `GET /users` → `User[]` (lista completa, depois filtra pelo ID — não há `GET /users/{id}` específico no backend ainda)
+- `PATCH /users/{id}` → `User` (atualiza usuário; payload condicional por `isSelf`)
 - `DELETE /users/{id}` → void (deleta usuário)
 
 **Estado**:
@@ -229,9 +233,9 @@ type UsersPageProps = {
 │   localStorage.token = accessToken
 │   localStorage.refreshToken = refreshToken
 │   ↓
-│   onLogin(token) callback
+│   onLogin(token) callback  ← MFE só dispara o callback
 │   ↓
-│   [Redirect /users]
+│   [Shell consome o callback e redireciona para /users]
 │
 └─ Erro: Exibe mensagem
     ↓
@@ -276,12 +280,14 @@ type UsersPageProps = {
     [Tenta recarregar? - Não implementado]
 ```
 
-### Fluxo 4: Editar Usuário
+### Fluxo 4: Editar Usuário (apenas admin)
 
 ```
-[Clica ícone editar em /users]
+[Clica ícone editar em /users]   ← ícone só renderiza para admin
     ↓ params: userId
-[Navega /users/{id}]
+[Navega /users/{id}/edit]
+    ↓
+[Guard de role: redirect /users se !ADMIN]
     ↓
 [API: GET /users] (carrega lista, filtra por id)
     ↓
@@ -289,11 +295,12 @@ type UsersPageProps = {
 │   ↓
 │   [Exibe formulário preenchido]
 │   ↓
-│   Usuário edita campos
+│   Admin edita campos
 │   ↓
-│   [Clica "Salvar"]
+│   [Clica "Atualizar"]
 │   ↓
-│   [API: PATCH /users/{id} com dados alterados]
+│   [API: PATCH /users/{id}]
+│        payload = isSelf ? { username, email } : { username, email, role }
 │   ↓
 │   Sucesso: [Redirect /users]
 │   Erro: Exibe mensagem
@@ -370,8 +377,8 @@ type AppHeaderProps = {
 - Se sem `currentUser`: Não exibe info de usuário
 
 **Estilo**:
-- Background: `colors.surface` (branco/claro)
-- Borda inferior: 3px solid `colors.brandBorder` (cor da marca)
+- Background: `colors.surface` (branco)
+- Borda inferior: 3px solid `colors.brandBorder` (marrom translúcido)
 - Sombra: `shadows.header`
 
 ---
@@ -403,12 +410,38 @@ type AuthCardProps = {
 **Dimensões**:
 - Width: 346px
 - Padding: 25px vertical, 15px horizontal
-- Border-radius: `radii.card` (12px)
+- Border-radius: `radii.card` (10px)
 
 **Estilo**:
 - Background: `colors.surface`
 - Sombra: `shadows.card`
 - Título em cor `colors.brand`, fontWeight 700, fontSize 36px
+
+---
+
+### Componente: ConfirmDialog
+
+**Arquivo**: [src/components/ConfirmDialog.tsx](../src/components/ConfirmDialog.tsx)
+
+**Uso**: Modal de confirmação genérico para ações destrutivas (deletar usuário em `/users` e `/users/{id}/edit`).
+
+**Props**:
+```typescript
+type ConfirmDialogProps = {
+  open: boolean;
+  title: string;
+  message: string;
+  loading?: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+};
+```
+
+**Comportamento**:
+- Renderiza um Dialog MUI com título, mensagem e dois botões (Cancelar / Confirmar).
+- Botões ficam desabilitados quando `loading: true`; o botão Confirmar exibe `CircularProgress`.
+- `onClose` é chamado ao clicar Cancelar ou fora do modal.
+- `onConfirm` é chamado ao clicar Confirmar — a página dona do estado decide o que fazer (geralmente disparar a chamada DELETE e fechar via `onClose`).
 
 ---
 
@@ -730,11 +763,11 @@ Se `VITE_MS_AUTH_URL` não estiver definido, usa `http://localhost:3001` (ambien
 
 ```typescript
 colors = {
-  primary: "#2a414d",        // Azul escuro (inputs, botões)
-  brand: "#2a414d",          // Azul marca (textos, logo)
-  brandBorder: "#9ca3af",    // Cinza (borda do header)
-  surface: "#ffffff",        // Branco (backgrounds)
-  label: "#545454",          // Cinza escuro (labels, textos secundários)
+  brand: "#4c372a",                          // Marrom da marca (textos, logo, sidebar)
+  brandBorder: "rgba(76, 55, 42, 0.5)",      // Marrom translúcido (borda do header)
+  primary: "#2a414d",                        // Azul escuro (inputs, botões, fieldsets)
+  label: "#545454",                          // Cinza escuro (labels, textos secundários)
+  surface: "#ffffff",                        // Branco (backgrounds de cards e inputs)
 }
 ```
 
@@ -742,9 +775,9 @@ colors = {
 
 ```typescript
 radii = {
-  button: 10,    // Botões: 10px
-  input: 12,     // Inputs: 12px
-  card: 12,      // Cards: 12px
+  input: 9,     // Inputs: 9px
+  card: 10,     // Cards: 10px
+  button: 15,   // Botões: 15px
 }
 ```
 
@@ -752,15 +785,15 @@ radii = {
 
 ```typescript
 shadows = {
-  card: "0 2px 8px rgba(0, 0, 0, 0.1)",
-  header: "0 2px 4px rgba(0, 0, 0, 0.08)",
+  header: "0px 3px 28.9px 0px rgba(0,0,0,0.12)",
+  card:   "0px 0px 15px 0px rgba(0,0,0,0.22)",
 }
 ```
 
 #### Tipografia
 
 ```typescript
-fontFamily: "'Inter', 'Roboto', sans-serif"
+fontFamily: '"Inter", "Helvetica Neue", Arial, sans-serif'
 ```
 
 ### Tema Material-UI
@@ -858,13 +891,16 @@ curl http://localhost:3001/auth/login -X POST \
 
 **Solução**:
 ```bash
-# Inicie o microserviço
+# Inicie o microserviço (Spring Boot / Maven)
 cd ../plus-ms-auth
-npm run dev
+./mvnw spring-boot:run     # Linux/macOS
+mvnw.cmd spring-boot:run   # Windows
 
-# Verifique a URL
-curl http://localhost:3001/health
+# Verifique se o serviço respondeu (Swagger UI deve carregar)
+curl -I http://localhost:3001/swagger-ui.html
 ```
+
+> Alternativamente, suba a stack inteira via `plus-infra-grupo05/` (`make setup` na primeira vez ou `make up` depois).
 
 ---
 
@@ -874,7 +910,7 @@ curl http://localhost:3001/health
 - ID na URL não existe mais
 - Voltar para /users e recarregar
 
-**Solução**: Implementar validação server-side (A confirmar)
+**Solução**: Voltar para `/users` e recarregar. (Melhoria futura: substituir o `GET /users` por `GET /users/{id}` no backend para 404 explícito.)
 
 ---
 
@@ -899,9 +935,9 @@ curl http://localhost:3001/health
 
 ### "Não pode deletar a si mesmo"
 
-**Comportamento esperado**: Checkbox é desabilitado para usuário atual em `/users`
-- User não consegue selecionar seu próprio usuário
-- Permissão server-side também evita delete (A confirmar)
+**Comportamento esperado**: Checkbox é desabilitado para o admin logado em `/users`
+- Admin não consegue selecionar seu próprio usuário (tooltip: "Você não pode deletar a si mesmo")
+- Permissão server-side também evita delete (backend exige `ROLE_ADMIN` em `DELETE /users/{id}` via `SecurityConfiguration.java`)
 
 ---
 
@@ -924,7 +960,7 @@ window.localStorage.setItem(STORAGE_KEY, String(open));
 
 **Causa possível**: remoteEntry.js não foi gerado ou URLs estão incorretas
 - Verificar se build foi executado: `npm run build`
-- Verificar se portas (shell: 5000, mfe: 4001) estão corretas
+- Verificar se portas (shell: 3000, mfe: 4001) estão corretas
 - Ver console do browser para erros de CORS
 
 ---
@@ -932,8 +968,13 @@ window.localStorage.setItem(STORAGE_KEY, String(open));
 ## 📚 Links e Referências
 
 - [Documentação geral](./README.md)
-- [ADR 0001 - Arquitetura do Front](./adr/0001-visao-geral-do-front.md)
+- [ADR 0001 - Visão Geral do Front-end](./adr/0001-visao-geral-do-front.md)
 - [ADR 0002 - Integração com API](./adr/0002-integracao-com-api.md)
+- [ADR 0003 - Tema MUI dentro de cada MFE](./adr/0003-tema-mui-no-mfe.md)
+- [ADR 0004 - Visibilidade admin-only no MFE](./adr/0004-visibilidade-admin-only-no-mfe.md)
+- [ADR 0005 - Estratégia de testes](./adr/0005-estrategia-de-testes.md)
+- [ADR 0006 - Pipeline de CI/CD e lockfile versionado](./adr/0006-cicd-e-lockfile-versionado.md)
+- [ADR 0007 - Persistência de estado de UX](./adr/0007-persistencia-de-estado-de-ux.md)
 - [Material-UI Docs](https://mui.com)
 - [React Router Docs](https://reactrouter.com)
 - [Vite Docs](https://vitejs.dev)
