@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import RegisterPage from "../../src/pages/RegisterPage";
 import * as authApi from "../../src/api/auth";
+import { USER_ROLES } from "../../src/api/auth";
 
 vi.mock("../../src/api/auth", async () => {
   const actual = await vi.importActual<typeof import("../../src/api/auth")>("../../src/api/auth");
@@ -56,7 +57,7 @@ describe("RegisterPage", () => {
         username: "victor",
         email: "v@plus.com",
         password: "secret",
-        role: "VENDEDOR",
+        role: USER_ROLES[0],
       });
     });
     await waitFor(() => expect(onRegister).toHaveBeenCalledTimes(1));

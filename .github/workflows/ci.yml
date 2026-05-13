@@ -4,8 +4,14 @@ on:
   push:
     branches: [main]
     tags: ['v*']
+    paths-ignore:
+      - '**.md'
+      - '.ai_log/**'
   pull_request:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - '.ai_log/**'
 
 jobs:
   build:
@@ -19,9 +25,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Type check
         run: npm run typecheck

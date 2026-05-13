@@ -13,8 +13,10 @@ export default defineConfig({
       exposes: {
         "./LoginPage": "./src/pages/LoginPage",
         "./RegisterPage": "./src/pages/RegisterPage",
+        "./UsersPage": "./src/pages/UsersPage",
+        "./UpdateUserPage": "./src/pages/UpdateUserPage",
       },
-      shared: ["react", "react-dom"],
+      shared: ["react", "react-dom", "react-router-dom"],
     }),
   ],
   build: {

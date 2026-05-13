@@ -1,8 +1,8 @@
-const API_BASE = import.meta.env.VITE_MS_AUTH_URL ?? "http://localhost:3001";
+import { ApiError, request } from "./http";
 
 // TODO: alinhar com o enum UserRole do plus-ms-auth quando os perfis forem definidos.
 // Valores atuais são placeholders.
-export const USER_ROLES = ["VENDEDOR", "GERENTE", "ADMIN"] as const;
+export const USER_ROLES = ["USER", "ADMIN"] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
 export type LoginRequest = {
@@ -29,40 +29,24 @@ export type RegisterRequest = {
   role: UserRole;
 };
 
-export class AuthApiError extends Error {
-  constructor(message: string, readonly status: number) {
-    super(message);
-    this.name = "AuthApiError";
-  }
-}
+export type CurrentUser = {
+  id: string;
+  username: string;
+  email: string;
+  role: string;
+};
 
-async function request<T>(path: string, body: unknown): Promise<T> {
-  let res: Response;
-  try {
-    res = await fetch(`${API_BASE}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-  } catch {
-    throw new AuthApiError("Não foi possível contatar o servidor", 0);
-  }
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new AuthApiError(text || `Erro ${res.status}`, res.status);
-  }
-
-  if (res.status === 204) return undefined as T;
-  const contentType = res.headers.get("content-type") ?? "";
-  if (!contentType.includes("application/json")) return undefined as T;
-  return res.json() as Promise<T>;
-}
+export const AuthApiError = ApiError;
+export type AuthApiError = ApiError;
 
 export function login(body: LoginRequest): Promise<LoginResponse> {
-  return request<LoginResponse>("/auth/login", body);
+  return request<LoginResponse>("/auth/login", "POST", body);
 }
 
 export function register(body: RegisterRequest): Promise<void> {
-  return request<void>("/auth/register", body);
+  return request<void>("/auth/register", "POST", body);
+}
+
+export function me(): Promise<CurrentUser> {
+  return request<CurrentUser>("/auth/me", "GET");
 }

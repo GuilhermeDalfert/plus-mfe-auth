@@ -1,8 +1,20 @@
+import type { ReactNode } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
+import PersonOutlineIcon from "@mui/icons-material/PersonOutlined";
 import { colors, shadows } from "../theme/tokens";
 
-export default function AppHeader() {
+type AppHeaderUser = {
+  username: string;
+  role: string;
+};
+
+type AppHeaderProps = {
+  leading?: ReactNode;
+  currentUser?: AppHeaderUser | null;
+};
+
+export default function AppHeader({ leading, currentUser }: AppHeaderProps) {
   return (
     <Box
       component="header"
@@ -13,9 +25,11 @@ export default function AppHeader() {
         boxShadow: shadows.header,
         display: "flex",
         alignItems: "center",
+        gap: "18px",
         px: "17px",
       }}
     >
+      {leading}
       <Typography
         sx={{
           fontWeight: 800,
@@ -26,6 +40,20 @@ export default function AppHeader() {
       >
         PLUS
       </Typography>
+      <Box sx={{ flex: 1 }} />
+      {currentUser && (
+        <Box sx={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+            <Typography sx={{ fontSize: 16, color: "#000", lineHeight: 1.2 }}>
+              {currentUser.username}
+            </Typography>
+            <Typography sx={{ fontSize: 15, color: "#545454", lineHeight: 1.2 }}>
+              {currentUser.role}
+            </Typography>
+          </Box>
+          <PersonOutlineIcon sx={{ fontSize: 34, color: "#000" }} />
+        </Box>
+      )}
     </Box>
   );
 }
