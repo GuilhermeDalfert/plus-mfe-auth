@@ -1,9 +1,15 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { MemoryRouter } from "react-router-dom";
+import type { ReactElement } from "react";
 import RegisterPage from "../../src/pages/RegisterPage";
 import * as authApi from "../../src/api/auth";
 import { USER_ROLES } from "../../src/api/auth";
+
+function renderWithRouter(ui: ReactElement) {
+  return render(<MemoryRouter>{ui}</MemoryRouter>);
+}
 
 vi.mock("../../src/api/auth", async () => {
   const actual = await vi.importActual<typeof import("../../src/api/auth")>("../../src/api/auth");
@@ -21,7 +27,8 @@ describe("RegisterPage", () => {
   });
 
   it("renders all fields and the submit button", () => {
-    render(<RegisterPage />);
+    renderWithRouter(<RegisterPage />);
+
     expect(screen.getByLabelText("Usuário")).toBeInTheDocument();
     expect(screen.getByLabelText("E-mail")).toBeInTheDocument();
     expect(screen.getByLabelText("Senha")).toBeInTheDocument();
@@ -31,7 +38,7 @@ describe("RegisterPage", () => {
 
   it("does not call the api when email is invalid", async () => {
     const user = userEvent.setup();
-    render(<RegisterPage />);
+    renderWithRouter(<RegisterPage />);
 
     await user.type(screen.getByLabelText("Usuário"), "victor");
     await user.type(screen.getByLabelText("E-mail"), "naoeumemail");
@@ -46,7 +53,7 @@ describe("RegisterPage", () => {
     const onRegister = vi.fn();
     mockedRegister.mockResolvedValueOnce(undefined);
 
-    render(<RegisterPage onRegister={onRegister} />);
+    renderWithRouter(<RegisterPage onRegister={onRegister} />);
     await user.type(screen.getByLabelText("Usuário"), "victor");
     await user.type(screen.getByLabelText("E-mail"), "v@plus.com");
     await user.type(screen.getByLabelText("Senha"), "secret");
@@ -67,7 +74,7 @@ describe("RegisterPage", () => {
     const user = userEvent.setup();
     mockedRegister.mockRejectedValueOnce(new Error("Email ja cadastrado"));
 
-    render(<RegisterPage />);
+    renderWithRouter(<RegisterPage />);
     await user.type(screen.getByLabelText("Usuário"), "victor");
     await user.type(screen.getByLabelText("E-mail"), "v@plus.com");
     await user.type(screen.getByLabelText("Senha"), "secret");
