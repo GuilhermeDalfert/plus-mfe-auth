@@ -8,9 +8,9 @@ Aceito — 2026-05-13
 
 ## Contexto
 
-O `plus-ms-auth` já protege os endpoints sensíveis com `ROLE_ADMIN` em `SecurityConfiguration.java`: `GET /users`, `PATCH /users/{id}` e `DELETE /users/{id}` retornam **403** para qualquer usuário sem o papel. Em tese, isso bastaria — a regra crítica de segurança vive no backend.
+O `plus-ms-auth` protege as **ações destrutivas** de gestão de usuários com `ROLE_ADMIN` em `SecurityConfiguration.java`: `PATCH /users/{id}` e `DELETE /users/{id}` retornam **403** para qualquer usuário sem o papel. Já o `GET /users` é permitido para `ADMIN` **e** `USER` autenticados (`hasAnyRole("ADMIN", "USER")`) — qualquer logado consegue listar.
 
-Na prática, ao implementar o `UsersPage` e o `UpdateUserPage` no `plus-mfe-auth`, o problema apareceu: **usuários comuns viam botões e ações que sempre falhavam ao clicar.** A lista de usuários (que o backend recusa carregar para quem não é admin) já caía direto em mensagem de erro. Mas para o admin enxergar a interface completa — e ela ser indistinguível para um usuário comum se removêssemos só o backend — o time precisava decidir: o MFE deveria *também* checar o papel, ou continuar exibindo tudo e deixar o backend rejeitar?
+Em tese o backend bastaria para a regra crítica de segurança (impedir mutação). Na prática, ao implementar o `UsersPage` e o `UpdateUserPage` no `plus-mfe-auth`, o problema apareceu: um usuário comum **carregava a lista normalmente** mas via os botões "Adicionar", "Deletar Usuário(s)" e o ícone de "Editar" — todos garantidos a falhar com 403 ao clicar. O time precisava decidir: o MFE deveria *também* checar o papel para esconder esses controles, ou continuar exibindo tudo e deixar o backend rejeitar?
 
 A pergunta apareceu de forma concreta no commit `2de3614` ("modal refatorizado, Apenas admim consegue ver: editar, adicionar e deletar usuários"), durante o refinamento da UsersPage.
 
@@ -34,8 +34,8 @@ Manter a UI única e deixar o usuário comum ver os botões. Ao clicar, vai cair
 - ✅ Regra de autorização fica em um lugar só (backend).
 - ✅ Zero risco de divergência entre front e back.
 - ❌ UX terrível: o usuário vê opções que nunca funcionam.
-- ❌ Listar usuários já cai em 403 — a tela inteira fica vazia e confusa para não-admin.
-- ❌ Spam de requisições negadas, ruim para observabilidade.
+- ❌ Spam de requisições 403 ao clicar nos controles, ruim para observabilidade.
+- ❌ A lista carrega normalmente para qualquer logado, então a página parece funcional — o que torna a frustração ainda pior quando cada ação falha.
 
 #### Alternativa C — Rotas inteiras protegidas no shell
 
@@ -82,12 +82,12 @@ O hook `useCurrentUser` (`src/hooks/useCurrentUser.ts`) carrega `/auth/me` uma v
 
 - **UX coerente**: usuário comum não vê ações inúteis; admin vê a interface completa.
 - **Defesa em profundidade**: a regra de segurança continua no backend; o MFE é a camada de UX.
-- **Menos pedidos 403** chegando ao backend, reduzindo ruído em logs.
+- **Menos pedidos 403** chegando ao backend para `PATCH` e `DELETE` de `/users` — reduz ruído em logs (o `GET /users` continua aberto a qualquer logado, então o tráfego de listagem não muda).
 - **Padrão claro para futuras telas**: qualquer ação privilegiada nova no MFE deve checar `isAdmin` antes de renderizar.
 
 ### Negativas
 
-- **Regra duplicada** entre `SecurityConfiguration.java` (backend) e checks de `role` espalhados em `UsersPage.tsx` (e potencialmente em telas futuras). Mitigação: ao introduzir um papel novo, fazer um grep por `=== "ADMIN"` no MFE para garantir que todos os pontos foram atualizados.
+- **Regra duplicada parcialmente** entre `SecurityConfiguration.java` (backend, autoritativo para `PATCH`/`DELETE` em `/users`) e checks de `role` espalhados em `UsersPage.tsx` (front, para UX). Mitigação: ao introduzir um papel novo, fazer um grep por `=== "ADMIN"` no MFE para garantir que todos os pontos foram atualizados.
 - **Risco de falsa sensação de segurança**: alguém pode confiar no check do front e pular a validação do back num endpoint novo. Mitigação: o backend é sempre a fonte da verdade; ADRs e revisão de PR devem reforçar isso.
 - **Acoplamento ao formato de `CurrentUser`**: o MFE depende de o backend retornar `role` em `/auth/me` como string compatível com a comparação `=== "ADMIN"`. Se o backend mudar o nome (ex: `roles: ["ADMIN"]` em array), todos os checks quebram. Mitigação: centralizar a derivação de `isAdmin` num helper se a complexidade crescer.
 - **Janela de mount sem `currentUser`**: durante o fetch de `/auth/me`, `isAdmin` é `false`. Para o admin, há um instante em que a UI parece de usuário comum. Mitigação aceita: o atraso é curto e o "default seguro" (esconder) é preferível ao oposto.
