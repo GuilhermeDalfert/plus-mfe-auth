@@ -8,16 +8,12 @@ import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import DialogContentText from "@mui/material/DialogContentText";
-import DialogActions from "@mui/material/DialogActions";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import MenuIcon from "@mui/icons-material/Menu";
 import { useNavigate, useParams } from "react-router-dom";
 import AppHeader from "../components/AppHeader";
+import ConfirmDialog from "../components/ConfirmDialog";
 import Sidebar from "../components/Sidebar";
 import {
   deleteUser,
@@ -61,6 +57,12 @@ export default function UpdateUserPage() {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
+    if (currentUser && currentUser.role !== "ADMIN") {
+      navigate("/users", { replace: true });
+    }
+  }, [currentUser, navigate]);
+
+  useEffect(() => {
     if (!id) return;
     let alive = true;
     setLoading(true);
@@ -98,7 +100,7 @@ export default function UpdateUserPage() {
     setSaving(true);
     setSaveError(null);
     try {
-      await updateUser(id, { username, email, role });
+      await updateUser(id, isSelf ? { username, email } : { username, email, role });
       navigate("/users");
     } catch (err) {
       const msg =
@@ -255,6 +257,7 @@ export default function UpdateUserPage() {
                       onChange={(e) => setRole(e.target.value as UserRole)}
                       input={<OutlinedInput notched={false} />}
                       sx={fieldSx}
+                      disabled={isSelf}
                     >
                       {USER_ROLES.map((r) => (
                         <MenuItem key={r} value={r}>
@@ -262,6 +265,11 @@ export default function UpdateUserPage() {
                         </MenuItem>
                       ))}
                     </Select>
+                    {isSelf && (
+                      <Typography sx={{ color: LABEL_COLOR, fontSize: 12, mt: "4px" }}>
+                        Você não pode alterar seu próprio cargo
+                      </Typography>
+                    )}
                   </Box>
 
                   {saveError && (
@@ -340,22 +348,14 @@ export default function UpdateUserPage() {
           </Box>
         </Box>
       </Box>
-      <Dialog open={confirmOpen} onClose={() => (deleting ? null : setConfirmOpen(false))}>
-        <DialogTitle>Confirmar exclusão</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Deletar o usuário {user?.username}?
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmOpen(false)} disabled={deleting}>
-            Cancelar
-          </Button>
-          <Button onClick={handleConfirmDelete} disabled={deleting} autoFocus>
-            {deleting ? <CircularProgress size={18} /> : "Confirmar"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Confirmar exclusão"
+        message={`Deletar o usuário ${user?.username}?`}
+        loading={deleting}
+        onConfirm={handleConfirmDelete}
+        onClose={() => setConfirmOpen(false)}
+      />
     </ThemeProvider>
   );
 }

@@ -14,11 +14,6 @@ import InputBase from "@mui/material/InputBase";
 import Link from "@mui/material/Link";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import DialogContentText from "@mui/material/DialogContentText";
-import DialogActions from "@mui/material/DialogActions";
 import Tooltip from "@mui/material/Tooltip";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
@@ -28,6 +23,7 @@ import AddIcon from "@mui/icons-material/Add";
 import BadgeOutlinedIcon from "@mui/icons-material/BadgeOutlined";
 import { useNavigate } from "react-router-dom";
 import AppHeader from "../components/AppHeader";
+import ConfirmDialog from "../components/ConfirmDialog";
 import Sidebar from "../components/Sidebar";
 import { deleteUser, listUsers, UsersApiError, type User } from "../api/users";
 import { useSidebarState } from "../hooks/useSidebarState";
@@ -102,7 +98,9 @@ export default function UsersPage({ onAddUser }: UsersPageProps) {
     });
   };
 
-  const canDelete = currentUser?.role === "ADMIN" && selected.size > 0;
+  const isAdmin = currentUser?.role === "ADMIN";
+  const canDelete = isAdmin && selected.size > 0;
+  const columnCount = isAdmin ? 4 : 3;
 
   const handleConfirmDelete = async () => {
     setDeleting(true);
@@ -189,7 +187,7 @@ export default function UsersPage({ onAddUser }: UsersPageProps) {
                     {deleting ? <CircularProgress size={18} sx={{ color: "#fff" }} /> : "Deletar Usuário(s)"}
                   </Button>
                 )}
-                {currentUser?.role === "ADMIN" && (
+                {isAdmin && (
                   <Button
                     onClick={handleAddUser}
                     startIcon={<AddIcon />}
@@ -248,28 +246,29 @@ export default function UsersPage({ onAddUser }: UsersPageProps) {
                       <TableCell sx={{ fontSize: 16, color: "#000", width: 282 }}>Usuário</TableCell>
                       <TableCell sx={{ fontSize: 16, color: "#000", width: 279 }}>E-mail</TableCell>
                       <TableCell sx={{ fontSize: 16, color: "#000", width: 210 }}>Cargo</TableCell>
-                      <TableCell sx={{ fontSize: 16, color: "#000" }}>Ações</TableCell>
-                      <TableCell padding="checkbox" />
+                      {isAdmin && (
+                        <TableCell sx={{ fontSize: 16, color: "#000" }} align="right">Ações</TableCell>
+                      )}
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {loading && (
                       <TableRow>
-                        <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                        <TableCell colSpan={columnCount} align="center" sx={{ py: 4 }}>
                           <CircularProgress size={24} />
                         </TableCell>
                       </TableRow>
                     )}
                     {!loading && error && (
                       <TableRow>
-                        <TableCell colSpan={5} sx={{ py: 2 }}>
+                        <TableCell colSpan={columnCount} sx={{ py: 2 }}>
                           <Alert severity="error">{error}</Alert>
                         </TableCell>
                       </TableRow>
                     )}
                     {!loading && !error && filteredUsers.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={5} align="center" sx={{ py: 4, color: FILTERS_BG }}>
+                        <TableCell colSpan={columnCount} align="center" sx={{ py: 4, color: FILTERS_BG }}>
                           Nenhum usuário encontrado.
                         </TableCell>
                       </TableRow>
@@ -291,42 +290,44 @@ export default function UsersPage({ onAddUser }: UsersPageProps) {
                               </Link>
                             </TableCell>
                             <TableCell sx={{ fontSize: 16, color: "#000" }}>{u.role}</TableCell>
-                            <TableCell>
-                              <IconButton
-                                aria-label={`Editar ${u.username}`}
-                                onClick={() => navigate(`/users/${u.id}/edit`)}
-                                sx={{ color: "#000" }}
-                              >
-                                <BadgeOutlinedIcon />
-                              </IconButton>
-                            </TableCell>
-                            <TableCell padding="checkbox">
-                              {isSelf ? (
-                                <Tooltip title="Você não pode deletar a si mesmo">
-                                  <span>
+                            {isAdmin && (
+                              <TableCell align="right">
+                                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "4px" }}>
+                                  <IconButton
+                                    aria-label={`Editar ${u.username}`}
+                                    onClick={() => navigate(`/users/${u.id}/edit`)}
+                                    sx={{ color: "#000" }}
+                                  >
+                                    <BadgeOutlinedIcon />
+                                  </IconButton>
+                                  {isSelf ? (
+                                    <Tooltip title="Você não pode deletar a si mesmo">
+                                      <span>
+                                        <Checkbox
+                                          checked={false}
+                                          disabled
+                                          slotProps={{ input: { "aria-label": `Selecionar ${u.username}` } }}
+                                          sx={{
+                                            color: FILTERS_BG,
+                                            "&.Mui-checked": { color: HEADING_COLOR },
+                                          }}
+                                        />
+                                      </span>
+                                    </Tooltip>
+                                  ) : (
                                     <Checkbox
-                                      checked={false}
-                                      disabled
+                                      checked={isSelected}
+                                      onChange={() => toggleRow(u.id)}
                                       slotProps={{ input: { "aria-label": `Selecionar ${u.username}` } }}
                                       sx={{
                                         color: FILTERS_BG,
                                         "&.Mui-checked": { color: HEADING_COLOR },
                                       }}
                                     />
-                                  </span>
-                                </Tooltip>
-                              ) : (
-                                <Checkbox
-                                  checked={isSelected}
-                                  onChange={() => toggleRow(u.id)}
-                                  slotProps={{ input: { "aria-label": `Selecionar ${u.username}` } }}
-                                  sx={{
-                                    color: FILTERS_BG,
-                                    "&.Mui-checked": { color: HEADING_COLOR },
-                                  }}
-                                />
-                              )}
-                            </TableCell>
+                                  )}
+                                </Box>
+                              </TableCell>
+                            )}
                           </TableRow>
                         );
                       })}
@@ -337,22 +338,14 @@ export default function UsersPage({ onAddUser }: UsersPageProps) {
           </Box>
         </Box>
       </Box>
-      <Dialog open={confirmOpen} onClose={() => (deleting ? null : setConfirmOpen(false))}>
-        <DialogTitle>Confirmar exclusão</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Deletar {selected.size} usuário(s)?
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmOpen(false)} disabled={deleting}>
-            Cancelar
-          </Button>
-          <Button onClick={handleConfirmDelete} disabled={deleting} autoFocus>
-            {deleting ? <CircularProgress size={18} /> : "Confirmar"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Confirmar exclusão"
+        message={`Deletar ${selected.size} usuário(s)?`}
+        loading={deleting}
+        onConfirm={handleConfirmDelete}
+        onClose={() => setConfirmOpen(false)}
+      />
     </ThemeProvider>
   );
 }
